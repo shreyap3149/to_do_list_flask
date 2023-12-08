@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List</title>
+  <link
+  rel="stylesheet"
+  href="{{ url_for('static',filename='styles/styles.css') }}"
+/>
+
+</head>
+
+
+
+<body>
+<nav class="navbar">
+    <div class="logo">
+        <a href="#"></a>
+    </div>
+    <ul class="nav-links">
+        <li><a href="/login">Log Out</a></li>
+    </ul>
+</nav>
+<div id="WelcomeContainer"></div>
+
+<div id="container">
+  <h1>To-Do List</h1>
+  <form id="taskForm">
+    <label for="taskInput">Add A New Task:</label>
+    <input type="text" id="taskInput" name="taskInput" required>
+
+    <label for="dueDateInput">Due Date:</label>
+    <input type="date" id="dueDateInput" name="dueDateInput" required>
+
+    <button type="button" onclick="addTask()">Add Task</button>
+  </form>
+
+  <ul id="taskList"></ul>
+
+  <div id="uploadBtn">
+    <label for="fileInput">Upload tasks from Excel:</label>
+    <input type="file" id="fileInput" accept=".xls, .xlsx" onchange="handleFile()">
+    <button type="button" onclick="uploadTasks()">Upload</button>
+  </div>
+
+ 
+</div>
+
+
+
+<div id="uploadContainer">
+  <h2>Uploaded Data</h2>
+  <div id="parsedDataContainer"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.1/xlsx.full.min.js"></script>
+<script src="static/app.js"></script>
+<script>
+function addTask() {
+    var taskInput = document.getElementById('taskInput');
+    var dueDateInput = document.getElementById('dueDateInput');
+    
+    var taskData = {
+        task: taskInput.value,
+        dueDate: dueDateInput.value
+    };
+
+    fetch('/add_task', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(taskData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Add the task to the UI or perform any other actions
+            var taskList = document.getElementById('taskList');
+            var taskItem = document.createElement('li');
+            taskItem.className = 'task';
+            taskItem.innerHTML = `
+
+            <div class="task-details">
+                <span class="task-name">${taskInput.value}</span>
+                <span class="due-date">${dueDateInput.value}</span>
+              </div>
+              <button class="delete-btn" onclick="removeTask(this)">Delete</button>
+              <button class="delete-btn" onclick="removeTask(this)">Edit</button>`;
+            taskList.appendChild(taskItem);
+
+            // Clear input fields
+            taskInput.value = '';
+            dueDateInput.value = '';
+        } else {
+            alert('Failed to add task. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    });
+}
+
+
+
+
+
+  function removeTask(btn) {
+    var taskItem = btn.parentNode;
+    var taskList = taskItem.parentNode;
+    taskList.removeChild(taskItem);
+  }
+
+  function handleFile() {
+  var fileInput = document.getElementById('fileInput');
+  var file = fileInput.files[0];
+
+  if (file) {
+    var reader = new FileReader();
+
+    reader.onload = function (e) {
+      var data = e.target.result;
+      // Use SheetJS to parse Excel data
+      var workbook = XLSX.read(data, { type: 'binary' });
+
+      var firstSheetName = workbook.SheetNames[0];
+      var worksheet = workbook.Sheets[firstSheetName];
+      // Process the worksheet data
+      var parsedData = XLSX.utils.sheet_to_json(worksheet);
+
+      // Display the parsed data in the "parsedDataContainer" div
+      displayParsedData(parsedData);
+    };
+
+    reader.readAsBinaryString(file);
+  }
+}
+
+function displayParsedData(parsedData) {
+  var parsedDataContainer = document.getElementById('parsedDataContainer');
+
+  // Clear existing content
+  parsedDataContainer.innerHTML = '';
+
+  // Create a table element
+  var table = document.createElement('table');
+  table.border = '1.5'; // Optional: add a border to the table
+
+  // Create table header
+  var thead = document.createElement('thead');
+  var headerRow = document.createElement('tr');
+
+  // Extract column names from the first data entry
+  var columns = Object.keys(parsedData[0]);
+
+  // Create table header cells
+  columns.forEach(function (column) {
+
+    let newcolums = column.split(",")
+    newcolums.forEach((item)=>{
+
+      var th = document.createElement("th")
+      th.textContent = item
+      headerRow.appendChild(th)
+    })
+
+
+    // var th = document.createElement('th');
+    // th.textContent = column;
+    // headerRow.appendChild(th);
+  });
+
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  // Create table body
+  var tbody = document.createElement('tbody');
+
+  // Loop through the parsed data and create table rows
+  parsedData.forEach(function (rowData) {
+    var row = document.createElement('tr');
+
+    // Loop through each column and create table cells
+    columns.forEach(function (column) {
+      let myarray = rowData[column].split(",")
+      myarray.forEach((item)=>{
+
+        var newcolumn = document.createElement('td')
+        newcolumn.innerText = item
+        row.appendChild(newcolumn)
+      })
+
+
+
+      // var cell = document.createElement('td');
+      // cell.textContent = rowData[column];
+      // row.appendChild(cell);
+    });
+
+    tbody.appendChild(row);
+  });
+
+  table.appendChild(tbody);
+
+  // Append the table to the container
+  parsedDataContainer.appendChild(table);
+
+
+
+}
+
+
+
+function uploadTasks() {
+  alert('Tasks uploaded successfully!');
+}
+
+</script>
+
+</body>
+</html>
